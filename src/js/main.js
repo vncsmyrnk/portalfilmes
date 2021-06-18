@@ -1,3 +1,4 @@
+/* Configuration files */
 const moviesConfig = {
     baseURL: 'https://api.themoviedb.org/3',
     routes: {
@@ -51,6 +52,7 @@ const panels = [
     }
 ]
 
+/* Util classes */
 class PanelsOrganizer {
     constructor(panels) {
         this.panels = panels
@@ -58,7 +60,7 @@ class PanelsOrganizer {
         for (const panel of this.panels) {
             if (panel.default) {
                 $(panel.element).show();
-                panel.lastVisible = true;
+                panel.lastVisible = false;
                 panel.isVisible = true;
             } else {
                 $(panel.element).hide();
@@ -72,13 +74,11 @@ class PanelsOrganizer {
         for (const panel of this.panels) {
             panel.lastVisible = false;
 
-            if (panel.isVisible)
+            if (panel.isVisible) {
                 panel.lastVisible = true;
-                localStorage.setItem('lastPanel', panel.name);
-            
+            }
                 
             panel.isVisible = false;
-            console.log(panel)
         }
 
         const panel = this.panels.find(panel => panel.name == panelName);
@@ -102,16 +102,15 @@ class PanelsOrganizer {
     }
 
     openLastPanel() {
-        const lastPanelName = localStorage.getItem('lastPanel');
-        const panel = this.panels.find(panel => panel.name == lastPanelName);
-        if (panel) panel.isVisible = true;
+        const panel = this.panels.find(panel => panel.lastVisible);
+        if (panel) {
+            this.setVisible(panel.name);
+        }
         this.setVisualVisibility();
-        // for (const panel of this.panels) {
-        //     if (panel.lastVisible)
-        //         $(panel.element).show();
-        //     else
-        //         $(panel.element).hide();
-        // }
+    }
+
+    getLastPanel() {
+        return this.panels.find(panel => panel.isVisible);
     }
 }
 
@@ -160,11 +159,13 @@ class TMDBImageRequester extends TMDBRequester {
     }
 }
 
+/* Instantiation */
 const movieRequest = new TMDBRequester(moviesConfig);
 const imageRequest = new TMDBImageRequester(imagesConfig);
 
 const panelsOrganizer = new PanelsOrganizer(panels);
 
+/* Panels dynamic rendering */
 buildMovies = async (movieRequester, imageRequester) => {
     const movies = await movieRequester.request('popular');
     const genres = await movieRequest.request('genres');
@@ -226,7 +227,10 @@ detailsButtonOnClick = async (id) => {
     const html = ejs.render(`
         <div class="detail_title">
             <h1><%= title %></h1>
-            <button class="ui button red" onclick="backFromDetailsOnClick()">Voltar</button>
+            <button class="ui button red" onclick="backOnClick()">
+                <i class="arrow left icon"></i>
+                Voltar
+            </button>
         </div>
         <div class="ui divider"></div>
         <div class="details ui special cards">
@@ -260,12 +264,15 @@ detailsButtonOnClick = async (id) => {
                 </div>
                 <div class="ui bottom attached button red">
                     <i class="mouse pointer"></i>
-                    <a href="<%= homepage %>">Acessar página</a>
+                    <a href="<%= homepage %>" target="_blank">Acessar página</a>
                 </div>
             </div>
         </div>
         <div class="detail_title--mobile">
-            <button class="ui button red" onclick="backFromDetailsOnClick()">Voltar</button>
+            <button class="ui button red" onclick="backOnClick()">
+                <i class="arrow left icon"></i>
+                Voltar
+            </button>
         </div>
     `,
         movieDetail
@@ -273,16 +280,10 @@ detailsButtonOnClick = async (id) => {
     $('#movies_details').append(html);
 }
 
-backFromDetailsOnClick = () => {
-    panelsOrganizer.setVisible('list');
-    panelsOrganizer.empty('details');
-}
-
-backOnClick = () => {
-    panelsOrganizer.openLastPanel();
-}
-
 searchOnEnter = async () => {
+    panelsOrganizer.empty('search');
+    panelsOrganizer.empty('details');
+
     const inputValue = $('#search-input').val();
     const searchResult = await movieRequest.request('search', {}, { query: inputValue.replaceAll(' ', '+') });
 
@@ -294,9 +295,12 @@ searchOnEnter = async () => {
     }
 
     const html = ejs.render(`
-            <div class="detail_title">
-                <h1>Resultados da Pesquisa</h1>
-                <button class="ui button" onclick="backFromDetailsOnClick()">Limpar</button>
+            <div class="search_title">
+                <h1>Resultados da Pesquisa por "<%= inputValue %>"</h1>
+                <button class="ui button secondary" onclick="backToListFromDetail()">
+                    <i class="close icon"></i>
+                    Limpar
+                </button>
             </div>
             <div class="ui divider"></div>
             <div class="movies ui special cards">
@@ -333,16 +337,29 @@ searchOnEnter = async () => {
                     </div>
                 <% } %>
             </div>
-            <div class="detail_title--mobile">
-                <button class="ui button" onclick="backFromDetailsOnClick()">Limpar</button>
-            </div>
         `,
-        searchResult
+        { ...searchResult, inputValue }
     );
     $('#movies_search').append(html);
 
     panelsOrganizer.setVisible('search');
     setCardsDimm();
+}
+
+/* Util methods */
+backToListFromDetail = () => {
+    panelsOrganizer.setVisible('list');
+    panelsOrganizer.empty('details');
+    panelsOrganizer.empty('search');
+    $('#search-input').val('');
+}
+
+backOnClick = () => {
+    panelsOrganizer.openLastPanel();
+    if (panelsOrganizer.getLastPanel() == 'list') {
+        panelsOrganizer.empty('search');
+    }
+    panelsOrganizer.empty('details');
 }
 
 setCardsDimm = () => {
@@ -359,6 +376,7 @@ setDefaultLocalStorage = () => {
     localStorage.setItem('lastPanel', panels.find(panel => panel.default).name);
 }
 
+/* Document initialization */
 $(document).ready(async _ => {
     await buildMovies(movieRequest, imageRequest);
     setCardsDimm();

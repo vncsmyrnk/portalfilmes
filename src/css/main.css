@@ -1,5 +1,4 @@
 * {
-    /* font-family: 'Roboto Condensed', sans-serif; */
     color: white;
 }
 
@@ -15,7 +14,6 @@ main {
         "content"
         "footer"
     ;
-    /* justify-items: center */
     padding: 10px 20%;
 }
 
@@ -80,6 +78,12 @@ footer {
     display: none;
 }
 
+.search_title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
 /* Semantic customization */
 .ui.card,
 .ui.cards>.card {
@@ -136,5 +140,9 @@ footer {
         display: flex;
         justify-content: center;
         margin-top: 20px;
+    }
+
+    .search_title {
+        flex-direction: column;
     }
 }
